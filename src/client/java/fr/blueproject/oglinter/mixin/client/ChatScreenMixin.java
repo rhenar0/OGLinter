@@ -27,7 +27,7 @@ public class ChatScreenMixin {
 
     @Inject(method = "render", at = @At("TAIL"))
     private void onRender(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) throws IOException {
-        if (!OglinterClient.ENABLED || chatField == null || chatField.getText().isEmpty()) return;
+        if (!OglinterClient.ENABLED || chatField == null || chatField.getText().isEmpty() || chatField.getText().startsWith("/") || chatField.getText().startsWith(">")) return;
         String input = chatField.getText();
         lastMatches = OglinterClient.LANG_TOOL.check(input);
         drawUnderlines(context, input, lastMatches);
@@ -40,7 +40,7 @@ public class ChatScreenMixin {
             int start = match.getFromPos();
             int end = match.getToPos();
 
-            if (start >= input.length() || end > input.length()) continue;
+            if (start >= input.length() || end > input.length() ) continue;
 
             String before = input.substring(0, start);
             String word = input.substring(start, end);

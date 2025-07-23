@@ -32,6 +32,7 @@ public class OglinterClient implements ClientModInitializer {
                             )
             );
         });
+
     }
 
     public static void toggle() {
