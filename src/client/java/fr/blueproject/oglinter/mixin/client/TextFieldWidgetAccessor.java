@@ -6,7 +6,7 @@ import org.spongepowered.asm.mixin.gen.Accessor;
 
 @Mixin(TextFieldWidget.class)
 public interface TextFieldWidgetAccessor {
-    @Accessor("scrollOffset")
-    int getScrollOffset();
+    @Accessor("firstCharacterIndex")
+    int getFirstCharacterIndex();
 }
 
