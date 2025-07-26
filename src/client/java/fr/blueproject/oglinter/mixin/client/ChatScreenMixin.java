@@ -1,5 +1,6 @@
 package fr.blueproject.oglinter.mixin.client;
 
+import fr.blueproject.oglinter.client.IgnoreListManager;
 import fr.blueproject.oglinter.client.OglinterClient;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
@@ -33,7 +34,12 @@ public class ChatScreenMixin {
         if (!OglinterClient.ENABLED || chatField == null || chatField.getText().isEmpty() || chatField.getText().startsWith("/") || chatField.getText().startsWith(">")) return;
 
         String input = chatField.getText();
-        lastMatches = OglinterClient.LANG_TOOL.check(input);
+        lastMatches = OglinterClient.LANG_TOOL.check(input).stream()
+                .filter(match -> {
+                    String word = input.substring(match.getFromPos(), match.getToPos());
+                    return !IgnoreListManager.shouldIgnore(word);
+                })
+                .toList();
 
         drawUnderlines(context, input, lastMatches, mouseX, mouseY);
     }
