@@ -18,6 +18,7 @@ import org.languagetool.rules.RuleMatch;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 @Mixin(ChatScreen.class)
@@ -27,19 +28,34 @@ public class ChatScreenMixin {
     protected TextFieldWidget chatField;
 
     @Unique
-    private List<RuleMatch> lastMatches = List.of();
+    private List<RuleMatch> lastMatches = new ArrayList<>();
 
     @Inject(method = "render", at = @At("TAIL"))
     private void onRender(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) throws IOException {
-        if (!OglinterClient.ENABLED || chatField == null || chatField.getText().isEmpty() || chatField.getText().startsWith("/") || chatField.getText().startsWith(">")) return;
+        if (!OglinterClient.ENABLED || chatField == null) return;
 
         String input = chatField.getText();
-        lastMatches = OglinterClient.LANG_TOOL.check(input).stream()
-                .filter(match -> {
-                    String word = input.substring(match.getFromPos(), match.getToPos());
-                    return !IgnoreListManager.shouldIgnore(word);
-                })
-                .toList();
+        if (input.isEmpty() || input.startsWith("/") || input.startsWith(">")) return;
+
+        switch (OglinterClient.CURRENT_MODE) {
+            case REAL_TIME -> lastMatches = OglinterClient.LANG_TOOL.check(input).stream()
+                    .filter(match -> {
+                        String word = input.substring(match.getFromPos(), match.getToPos());
+                        return !IgnoreListManager.shouldIgnore(word);
+                    })
+                    .toList();
+
+            case AFTER_WORD -> {
+                if (!input.endsWith(" ")) return;
+
+                lastMatches = OglinterClient.LANG_TOOL.check(input).stream()
+                        .filter(match -> {
+                            String word = input.substring(match.getFromPos(), match.getToPos());
+                            return !IgnoreListManager.shouldIgnore(word);
+                        })
+                        .toList();
+            }
+        }
 
         drawUnderlines(context, input, lastMatches, mouseX, mouseY);
     }

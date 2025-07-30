@@ -14,7 +14,7 @@ public class IgnoreListManager {
     private static final Type LIST_TYPE = new TypeToken<List<String>>(){}.getType();
 
     private static final Path FILE_PATH = Path.of("config", "oglinter", "ignore_words.json");
-    private static final Set<String> defaultIgnoreWords = Set.of("horyel", "chaor", "sylkabe", "rhenar");
+    private static final Set<String> defaultIgnoreWords = Set.of("cyclame", "septiel", "myecyclame", "myecyklaäm", "hoydja", "chaorr", "hypnelle", "vespième", "novène", "hémère", "closyle", "horyel", "myejaarme", "myekloarme", "noviah", "traviah", "fantiah", "joviah", "amiah", "fetiah", "somiah", "aubeciel", "fontame", "lunatia", "chassevent", "solame", "luminiel", "plateflamme", "sacrefeu", "ocrefeuille", "froidael", "glaçame", "givrevent", "sylest", "fryest", "remorttilyem", "eskara", "nezloyan", "enloyan", "obsyde", "elferyde", "cielmante", "gelfeu", "gelvase", "guerneis", "rongeroche", "creeper", "sehr", "sehrounda", "luhna", "démentium", "sanitarium", "antanaclase", "yarkane", "vildiur", "ehlyn", "yazor", "sylkabe", "niben", "bartohrn", "aldia", "aleiksei", "alixollo", "drak", "drak-lacrima", "lacrima", "fenitis", "flarian", "iridius", "lellion", "nobutoga", "satoki", "arnhild", "khyrn", "aifa", "erylumique", "keraunique", "segghe", "uwheiz", "ryegs", "barclay", "massilia", "almara", "drungyig", "pattycake", "kreahr", "kenhr", "djeh", "nrah", "kreh", "prahfehkr", "krahm", "ashram", "samyuga", "dharma", "svadha", "ynix", "kaorel", "sangha", "srelyvh", "adronid", "rem-vaema", "pitagan", "goyan", "pryan", "na'kaar", "bazinga", "adel", "arwen", "a'tan");
 
     private static Set<String> ignoreWords = new HashSet<>();
 
