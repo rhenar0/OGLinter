@@ -17,9 +17,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.languagetool.rules.RuleMatch;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 @Mixin(ChatScreen.class)
 public class ChatScreenMixin {
@@ -28,32 +27,87 @@ public class ChatScreenMixin {
     protected TextFieldWidget chatField;
 
     @Unique
-    private List<RuleMatch> lastMatches = new ArrayList<>();
+    private CompletableFuture<List<RuleMatch>> lintFuture;
+
+    @Unique
+    private String lintInput = "";
+
+    @Unique
+    private String lastCheckedInput = "";
+
+    @Unique
+    private List<RuleMatch> lastMatches = List.of();
+
+    @Unique
+    private long lastInputChangeTime = 0;
+
+    @Unique
+    private static final long DEBOUNCE_MS = 200;
 
     @Inject(method = "render", at = @At("TAIL"))
-    private void onRender(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) throws IOException {
+    private void onRender(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
         if (!OglinterClient.ENABLED || chatField == null) return;
 
         String input = chatField.getText();
-        if (input.isEmpty() || input.startsWith("/") || input.startsWith(">")) return;
+        if (input.isEmpty() || input.startsWith("/") || input.startsWith(">")) {
+            lastMatches = List.of();
+            return;
+        }
+
+        if (!input.equals(lintInput)) {
+            lintInput = input;
+            lastInputChangeTime = System.currentTimeMillis();
+        }
+
+        long timeSinceLastChange = System.currentTimeMillis() - lastInputChangeTime;
+        boolean shouldCheck = timeSinceLastChange >= DEBOUNCE_MS && !input.equals(lastCheckedInput);
 
         switch (OglinterClient.CURRENT_MODE) {
-            case REAL_TIME -> lastMatches = OglinterClient.LANG_TOOL.check(input).stream()
-                    .filter(match -> {
-                        String word = input.substring(match.getFromPos(), match.getToPos());
-                        return !IgnoreListManager.shouldIgnore(word);
-                    })
-                    .toList();
+            case REAL_TIME -> {
+                if (shouldCheck && (lintFuture == null || lintFuture.isDone())) {
+                    final String snapshot = input;
+                    lastCheckedInput = snapshot;
+
+                    lintFuture = OglinterClient.checkAsync(snapshot).thenApply(matches -> matches.stream()
+                            .filter(match -> {
+                                int from = match.getFromPos();
+                                int to = match.getToPos();
+                                if (from < 0 || to > snapshot.length() || from >= to) return false;
+                                String word = snapshot.substring(from, to);
+                                return !IgnoreListManager.shouldIgnore(word);
+                            })
+                            .toList());
+                }
+
+                if (lintFuture != null && lintFuture.isDone()) {
+                    lastMatches = lintFuture.getNow(lastMatches);
+                }
+            }
 
             case AFTER_WORD -> {
-                if (!input.endsWith(" ")) return;
+                if (!input.endsWith(" ")) {
+                    drawUnderlines(context, input, lastMatches, mouseX, mouseY);
+                    return;
+                }
 
-                lastMatches = OglinterClient.LANG_TOOL.check(input).stream()
-                        .filter(match -> {
-                            String word = input.substring(match.getFromPos(), match.getToPos());
-                            return !IgnoreListManager.shouldIgnore(word);
-                        })
-                        .toList();
+                if (shouldCheck && (lintFuture == null || lintFuture.isDone())) {
+                    final String snapshot = input;
+                    lastCheckedInput = snapshot;
+
+                    lintFuture = OglinterClient.checkAsync(snapshot).thenApply(matches -> matches.stream()
+                            .filter(match -> {
+                                int from = match.getFromPos();
+                                int to = match.getToPos();
+                                if (from < 0 || to > snapshot.length() || from >= to) return false;
+                                String word = snapshot.substring(from, to);
+                                return !IgnoreListManager.shouldIgnore(word);
+                            })
+                            .toList());
+                }
+
+                if (lintFuture != null && lintFuture.isDone()) {
+                    lastMatches = lintFuture.getNow(lastMatches);
+                }
             }
         }
 

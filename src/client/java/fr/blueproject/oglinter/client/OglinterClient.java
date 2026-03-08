@@ -7,23 +7,42 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.languagetool.JLanguageTool;
 import org.languagetool.language.French;
+import org.languagetool.rules.RuleMatch;
 
+import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import static com.mojang.brigadier.arguments.StringArgumentType.getString;
 import static com.mojang.brigadier.arguments.StringArgumentType.word;
 import static net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.*;
 
 public class OglinterClient implements ClientModInitializer {
+
+    static {
+        System.setProperty("jdk.xml.totalEntitySizeLimit", "0");
+        System.setProperty("jdk.xml.entityExpansionLimit", "0");
+    }
+
     public static final JLanguageTool LANG_TOOL = new JLanguageTool(new French());
     public static final String MOD_ID = "OGLinterClient";
     public static final Logger LOGGER = LogManager.getLogger(MOD_ID);
     public static boolean ENABLED = true;
 
+    private static final ExecutorService LINT_EXECUTOR = Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "oglinter-lint-thread");
+        t.setDaemon(true);
+        return t;
+    });
+
     @Override
     public void onInitializeClient() {
         LOGGER.info("Initializing OGLinter client");
         IgnoreListManager.load();
+
+        Runtime.getRuntime().addShutdownHook(new Thread(LINT_EXECUTOR::shutdown, "oglinter-lint-shutdown"));
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> dispatcher.register(
                 literal("og")
@@ -90,6 +109,17 @@ public class OglinterClient implements ClientModInitializer {
                         )
 
         ));
+    }
+
+    public static CompletableFuture<List<RuleMatch>> checkAsync(String text) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return LANG_TOOL.check(text);
+            } catch (Exception e) {
+                LOGGER.error("Erreur pendant la vérification", e);
+                return List.of();
+            }
+        }, LINT_EXECUTOR);
     }
 
     public static void toggle() {
